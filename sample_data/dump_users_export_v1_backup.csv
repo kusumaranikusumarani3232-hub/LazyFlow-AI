@@ -1,0 +1,5 @@
+TransactionID,Date,Description,Amount,Currency,Category
+TX-1001,2023-10-12,Cloud Server Hosting - Pro Tier,149.00,USD,Infrastructure
+TX-1002,2023-10-15,Domain DNS Services,18.50,USD,Domains
+TX-1003,2023-10-18,Database Automated Backups,42.00,USD,Storage
+TX-1004,2023-10-20,SSL Wildcard Certificate,79.00,USD,Security

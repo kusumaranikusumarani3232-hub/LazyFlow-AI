@@ -1,0 +1,3 @@
+Monday Standup:
+- Shipped bugfix
+- Planning file organizer app

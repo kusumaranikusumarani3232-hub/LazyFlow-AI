@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: lazyflow-ai-backend
+    env: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: BACKBOARD_API_KEY
+        sync: false
+      - key: BACKBOARD_BASE_URL
+        value: https://app.backboard.io/api
+      - key: BACKBOARD_DEFAULT_PROVIDER
+        value: openrouter
+      - key: BACKBOARD_DEFAULT_MODEL
+        value: meta-llama/llama-3.1-8b-instruct
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: MAX_FILE_SIZE_MB
+        value: 50
+      - key: MAX_BATCH_FILES
+        value: 30
