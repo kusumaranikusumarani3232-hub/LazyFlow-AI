@@ -42,11 +42,21 @@ No other text, markdown formatting, or preamble. Return raw JSON array only.
 """
 
 class AIOrganizerService:
-    def __init__(self):
-        self.api_key = settings.BACKBOARD_API_KEY
-        self.base_url = settings.BACKBOARD_BASE_URL
-        self.model = settings.BACKBOARD_DEFAULT_MODEL
-        self.provider = settings.BACKBOARD_DEFAULT_PROVIDER
+    @property
+    def api_key(self) -> str:
+        return settings.BACKBOARD_API_KEY
+
+    @property
+    def base_url(self) -> str:
+        return settings.BACKBOARD_BASE_URL
+
+    @property
+    def model(self) -> str:
+        return settings.BACKBOARD_DEFAULT_MODEL
+
+    @property
+    def provider(self) -> str:
+        return settings.BACKBOARD_DEFAULT_PROVIDER
 
     def check_configuration(self) -> bool:
         return bool(self.api_key and not self.api_key.startswith("your_backboard"))

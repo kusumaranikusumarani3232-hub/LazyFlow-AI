@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         if not self.CORS_ORIGINS:
             return ["*"]
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        if self.CORS_ORIGINS.strip() == "*":
+            return ["*"]
+        origins = []
+        for origin in self.CORS_ORIGINS.split(","):
+            cleaned = origin.strip()
+            if cleaned == "*":
+                origins.append("*")
+            elif cleaned:
+                origins.append(cleaned.rstrip("/"))
+        return origins
 
 settings = Settings()

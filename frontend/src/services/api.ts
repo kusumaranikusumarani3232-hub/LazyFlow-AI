@@ -2,7 +2,8 @@ import type { HealthStatus, ModelStatus, OrganizeResponse, FileOrganizedItem } f
 
 // In production on Vercel, VITE_API_URL points to Render backend.
 // Locally with Vite dev proxy, empty string uses relative /api which Vite proxies to http://127.0.0.1:8000.
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const RAW_API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
 
 export interface SampleFileInfo {
   name: string;

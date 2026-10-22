@@ -62,3 +62,27 @@ def test_download_zip_invalid_session():
         }
     )
     assert response.status_code == 404
+
+def test_sample_files_endpoints():
+    response = client.get("/api/sample-files")
+    assert response.status_code == 200
+    samples = response.json()
+    assert len(samples) > 0
+    first_file = samples[0]["name"]
+    file_response = client.get(f"/api/sample-files/{first_file}")
+    assert file_response.status_code == 200
+    assert len(file_response.content) > 0
+
+def test_cors_configured_origin():
+    # Test with origin that matches configured localhost origin
+    origin = "http://localhost:5173"
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == origin
+
