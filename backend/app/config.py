@@ -11,7 +11,12 @@ class Settings(BaseSettings):
     BACKBOARD_DEFAULT_PROVIDER: str = "openrouter"
     BACKBOARD_DEFAULT_MODEL: str = "meta-llama/llama-3.1-8b-instruct"
     
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = (
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000,"
+        "https://lazyflow-ai.vercel.app"
+    )
+    # Allows all Vercel deployments (production, previews, branch deployments)
+    CORS_ORIGIN_REGEX: str = r"^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$"
     MAX_FILE_SIZE_MB: int = 50
     MAX_BATCH_FILES: int = 30
     SESSION_EXPIRY_MINUTES: int = 60
@@ -28,16 +33,12 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         if not self.CORS_ORIGINS:
-            return ["*"]
-        if self.CORS_ORIGINS.strip() == "*":
-            return ["*"]
+            return ["http://localhost:5173", "https://lazyflow-ai.vercel.app"]
         origins = []
         for origin in self.CORS_ORIGINS.split(","):
-            cleaned = origin.strip()
-            if cleaned == "*":
-                origins.append("*")
-            elif cleaned:
-                origins.append(cleaned.rstrip("/"))
+            cleaned = origin.strip().rstrip("/")
+            if cleaned and cleaned not in origins:
+                origins.append(cleaned)
         return origins
 
 settings = Settings()

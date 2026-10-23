@@ -19,7 +19,9 @@ services:
       - key: BACKBOARD_DEFAULT_MODEL
         value: meta-llama/llama-3.1-8b-instruct
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://lazyflow-ai.vercel.app,http://localhost:5173,http://localhost:3000"
+      - key: CORS_ORIGIN_REGEX
+        value: '^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$'
       - key: MAX_FILE_SIZE_MB
         value: 50
       - key: MAX_BATCH_FILES

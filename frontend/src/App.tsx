@@ -37,6 +37,8 @@ export const App: React.FC = () => {
   // Diagnostics
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
+  const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
 
@@ -54,24 +56,31 @@ export const App: React.FC = () => {
 
   const uploadSectionRef = useRef<HTMLDivElement>(null);
 
+  const checkSystem = async () => {
+    setConnectionState('connecting');
+    setConnectionError(null);
+
+    try {
+      const h = await fetchHealth();
+      setHealth(h);
+      setConnectionState('connected');
+    } catch (err: any) {
+      console.warn('Backend not responding yet:', err);
+      setConnectionState('error');
+      setConnectionError(err.message || 'Failed to reach LazyFlow AI backend.');
+      return;
+    }
+
+    try {
+      const m = await fetchModelStatus();
+      setModelStatus(m);
+    } catch (err: any) {
+      console.warn('Model status unavailable:', err);
+    }
+  };
+
   // Fetch initial diagnostic data
   useEffect(() => {
-    const checkSystem = async () => {
-      try {
-        const h = await fetchHealth();
-        setHealth(h);
-      } catch (err: any) {
-        console.warn('Backend not responding yet:', err);
-      }
-
-      try {
-        const m = await fetchModelStatus();
-        setModelStatus(m);
-      } catch (err: any) {
-        console.warn('Model status unavailable:', err);
-      }
-    };
-
     checkSystem();
   }, []);
 
@@ -276,7 +285,9 @@ export const App: React.FC = () => {
       <Navbar
         health={health}
         modelStatus={modelStatus}
+        connectionState={connectionState}
         onOpenPrivacy={() => setIsPrivacyOpen(true)}
+        onRetryConnection={checkSystem}
       />
 
       {/* Main Content */}
@@ -288,8 +299,11 @@ export const App: React.FC = () => {
         <div className="pt-6">
           <StatusBanner
             health={health}
+            connectionState={connectionState}
+            connectionError={connectionError}
             errorMessage={errorMessage}
             onClearError={() => setErrorMessage(null)}
+            onRetryConnection={checkSystem}
           />
         </div>
 

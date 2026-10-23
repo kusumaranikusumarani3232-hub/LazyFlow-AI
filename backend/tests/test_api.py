@@ -86,3 +86,54 @@ def test_cors_configured_origin():
     assert response.status_code == 200
     assert response.headers.get("access-control-allow-origin") == origin
 
+def test_cors_vercel_production_origin():
+    # Test production Vercel origin
+    origin = "https://lazyflow-ai.vercel.app"
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == origin
+    assert "GET" in response.headers.get("access-control-allow-methods", "")
+
+def test_cors_vercel_preview_regex_origin():
+    # Test preview/branch Vercel origins via regex
+    preview_origin = "https://lazyflow-ai-git-feature-preview.vercel.app"
+    response = client.options(
+        "/api/model-status",
+        headers={
+            "Origin": preview_origin,
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == preview_origin
+
+def test_cors_disallowed_origin_rejected():
+    # Test that unknown/unauthorized origins are rejected
+    disallowed_origin = "https://malicious-attacker-site.com"
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": disallowed_origin,
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 400
+    assert "Disallowed CORS origin" in response.text
+
+def test_cors_headers_on_actual_request():
+    origin = "https://lazyflow-ai.vercel.app"
+    response = client.get(
+        "/api/health",
+        headers={"Origin": origin}
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+

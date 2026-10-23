@@ -45,3 +45,12 @@ export interface UploadFileItem {
   id: string;
   description?: string;
 }
+
+export interface FileMetadata {
+  id: string;
+  filename: string;
+  size: number;
+  mime_type?: string;
+  description?: string;
+}
+

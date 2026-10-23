@@ -1,15 +1,46 @@
 import React from 'react';
-import { FolderGit2, Shield, Activity } from 'lucide-react';
+import { FolderGit2, Shield, Activity, RefreshCw } from 'lucide-react';
 import { ModelBadge } from './ModelBadge';
 import type { HealthStatus, ModelStatus } from '../types';
 
 interface NavbarProps {
   health: HealthStatus | null;
   modelStatus: ModelStatus | null;
+  connectionState: 'connecting' | 'connected' | 'error';
   onOpenPrivacy: () => void;
+  onRetryConnection?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ health, modelStatus, onOpenPrivacy }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  health,
+  modelStatus,
+  connectionState,
+  onOpenPrivacy,
+  onRetryConnection,
+}) => {
+  let statusText = 'Connecting...';
+  let statusColor = 'text-amber-400';
+  let dotAnimation = 'animate-pulse';
+  let tooltip = 'Connecting to backend...';
+
+  if (connectionState === 'error') {
+    statusText = 'Backend Offline';
+    statusColor = 'text-rose-400';
+    dotAnimation = '';
+    tooltip = 'Backend is unreachable, cold-starting, or CORS is blocked. Click to retry connection.';
+  } else if (connectionState === 'connected' && health) {
+    dotAnimation = '';
+    if (health.backboard_configured) {
+      statusText = 'API Connected';
+      statusColor = 'text-forest-400';
+      tooltip = `Connected to ${health.app_name} | Model: ${health.model}`;
+    } else {
+      statusText = 'Config Required';
+      statusColor = 'text-amber-400';
+      tooltip = 'Backend is online, but BACKBOARD_API_KEY is missing on Render.';
+    }
+  }
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-forest-900/40 bg-charcoal-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -44,15 +75,23 @@ export const Navbar: React.FC<NavbarProps> = ({ health, modelStatus, onOpenPriva
           </button>
 
           {/* Health indicator dot */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs bg-charcoal-900/80 border border-slate-800 text-slate-300"
-            title={`Backend Status: ${health?.status || 'connecting'} | Model: ${health?.model || 'meta-llama/llama-3.1-8b-instruct'}`}
+          <button
+            type="button"
+            onClick={connectionState === 'error' ? onRetryConnection : undefined}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs bg-charcoal-900/80 border border-slate-800 text-slate-300 transition-all ${
+              connectionState === 'error' ? 'hover:bg-rose-950/40 hover:border-rose-800 cursor-pointer' : 'cursor-default'
+            }`}
+            title={tooltip}
           >
-            <Activity className={`w-3.5 h-3.5 ${health?.backboard_configured ? 'text-forest-400' : 'text-amber-400'}`} />
+            {connectionState === 'error' ? (
+              <RefreshCw className="w-3.5 h-3.5 text-rose-400 animate-spin-slow" />
+            ) : (
+              <Activity className={`w-3.5 h-3.5 ${statusColor} ${dotAnimation}`} />
+            )}
             <span className="hidden md:inline font-mono text-[11px]">
-              {health?.backboard_configured ? 'API Connected' : 'Config Required'}
+              {statusText}
             </span>
-          </div>
+          </button>
         </div>
       </div>
     </header>

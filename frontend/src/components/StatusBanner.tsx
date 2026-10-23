@@ -1,38 +1,76 @@
 import React from 'react';
-import { AlertCircle, Key, X } from 'lucide-react';
+import { AlertCircle, Key, RefreshCw, ServerCrash, X } from 'lucide-react';
 import type { HealthStatus } from '../types';
 
 interface StatusBannerProps {
   health: HealthStatus | null;
+  connectionState: 'connecting' | 'connected' | 'error';
+  connectionError: string | null;
   errorMessage: string | null;
   onClearError: () => void;
+  onRetryConnection: () => void;
 }
 
 export const StatusBanner: React.FC<StatusBannerProps> = ({
   health,
+  connectionState,
+  connectionError,
   errorMessage,
   onClearError,
+  onRetryConnection,
 }) => {
-  const isMisconfigured = health && !health.backboard_configured;
+  const isMisconfigured = Boolean(health && !health.backboard_configured);
+  const hasConnectionError = connectionState === 'error' && Boolean(connectionError);
 
-  if (!isMisconfigured && !errorMessage) return null;
+  if (!isMisconfigured && !hasConnectionError && !errorMessage) {
+    return null;
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-3 px-4">
-      {/* Misconfigured API Key Alert */}
+      {/* Backend Connection Error Alert */}
+      {hasConnectionError && (
+        <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-600/40 text-amber-200 text-xs flex items-start justify-between gap-3 shadow-lg">
+          <div className="flex items-start gap-3">
+            <ServerCrash className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-amber-100 mb-0.5">
+                Backend Connection Notice
+              </h4>
+              <p className="text-amber-300/90 leading-relaxed mb-2">
+                {connectionError}
+              </p>
+              <button
+                type="button"
+                onClick={onRetryConnection}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-amber-600/20 hover:bg-amber-600/30 text-amber-200 border border-amber-500/40 font-medium transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Retry Connection</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Misconfigured API Key Alert (Backend is alive, but missing BACKBOARD_API_KEY) */}
       {isMisconfigured && (
         <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-600/40 text-amber-200 text-xs flex items-start gap-3 shadow-lg">
           <Key className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="font-semibold text-amber-100 mb-0.5">Backboard API Key Required</h4>
             <p className="text-amber-300/90 leading-relaxed">
-              Backboard API key is not configured or is missing. Please set your <code className="bg-amber-900/60 px-1 py-0.5 rounded font-mono text-amber-100">BACKBOARD_API_KEY</code> in <code className="bg-amber-900/60 px-1 py-0.5 rounded font-mono text-amber-100">backend/.env</code>.
+              The backend is running, but the Backboard API key is missing. Please set your{' '}
+              <code className="bg-amber-900/60 px-1 py-0.5 rounded font-mono text-amber-100">
+                BACKBOARD_API_KEY
+              </code>{' '}
+              in your Render environment variables or <code className="bg-amber-900/60 px-1 py-0.5 rounded font-mono text-amber-100">backend/.env</code>.
             </p>
           </div>
         </div>
       )}
 
-      {/* Error Message Alert */}
+      {/* Operation Error Message Alert */}
       {errorMessage && (
         <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-600/40 text-rose-200 text-xs flex items-start justify-between gap-3 shadow-lg">
           <div className="flex items-start gap-3">
@@ -43,8 +81,10 @@ export const StatusBanner: React.FC<StatusBannerProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClearError}
             className="p-1 text-rose-400 hover:text-white transition-colors"
+            title="Dismiss notice"
           >
             <X className="w-4 h-4" />
           </button>
