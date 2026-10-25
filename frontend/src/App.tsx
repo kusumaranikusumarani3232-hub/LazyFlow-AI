@@ -57,16 +57,31 @@ export const App: React.FC = () => {
 
   const uploadSectionRef = useRef<HTMLDivElement>(null);
 
-  const checkSystem = async () => {
+  const checkSystem = async (retryCount = 0) => {
     setConnectionState('connecting');
-    setConnectionError(null);
+    if (retryCount === 0) {
+      setConnectionError(null);
+    }
 
     try {
       const h = await fetchHealth();
       setHealth(h);
       setConnectionState('connected');
+      setConnectionError(null);
     } catch (err: any) {
       console.warn('Backend not responding yet:', err);
+      // Auto-retry up to 6 times (every 5 seconds) during Render free tier cold-start wake-up
+      const MAX_AUTO_RETRIES = 6;
+      if (retryCount < MAX_AUTO_RETRIES) {
+        setConnectionState('connecting');
+        setConnectionError(
+          `Waking up Render backend (attempt ${retryCount + 1}/${MAX_AUTO_RETRIES}). Free instances take up to 50s to spin up...`
+        );
+        setTimeout(() => {
+          checkSystem(retryCount + 1);
+        }, 5000);
+        return;
+      }
       setConnectionState('error');
       setConnectionError(err.message || 'Failed to reach LazyFlow AI backend.');
       return;

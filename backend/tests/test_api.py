@@ -136,4 +136,42 @@ def test_cors_headers_on_actual_request():
     assert response.headers.get("access-control-allow-origin") == origin
     assert response.headers.get("access-control-allow-credentials") == "true"
 
+def test_cors_hyphenated_production_origin():
+    # Test the exact deployed Vercel URL with hyphen
+    origin = "https://lazy-flow-ai.vercel.app"
+    response = client.options(
+        "/api/health",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET"
+        }
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == origin
+    assert response.headers.get("access-control-allow-credentials") == "true"
+
+    # Also test actual GET request
+    get_res = client.get("/api/health", headers={"Origin": origin})
+    assert get_res.status_code == 200
+    assert get_res.headers.get("access-control-allow-origin") == origin
+
+def test_cors_origins_list_parsing():
+    from app.config import Settings
+    
+    # Test JSON array parsing
+    s1 = Settings(CORS_ORIGINS='["https://custom1.com", "https://custom2.com/"]')
+    origins1 = s1.cors_origins_list
+    assert "https://lazy-flow-ai.vercel.app" in origins1
+    assert "https://custom1.com" in origins1
+    assert "https://custom2.com" in origins1
+    assert "https://custom2.com/" not in origins1
+
+    # Test comma-separated parsing with quotes and trailing slashes
+    s2 = Settings(CORS_ORIGINS=" 'https://custom3.com/' , \"https://custom4.com\" ")
+    origins2 = s2.cors_origins_list
+    assert "https://lazy-flow-ai.vercel.app" in origins2
+    assert "https://custom3.com" in origins2
+    assert "https://custom4.com" in origins2
+
+
 

@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     BACKBOARD_DEFAULT_MODEL: str = "meta-llama/llama-3.1-8b-instruct"
     
     CORS_ORIGINS: str = (
-        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000,"
-        "https://lazyflow-ai.vercel.app"
+        "https://lazy-flow-ai.vercel.app,https://lazyflow-ai.vercel.app,"
+        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
     )
     # Allows all Vercel deployments (production, previews, branch deployments)
     CORS_ORIGIN_REGEX: str = r"^https:\/\/([a-zA-Z0-9_-]+\.)*vercel\.app$"
@@ -44,13 +44,36 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> List[str]:
-        if not self.CORS_ORIGINS:
-            return ["http://localhost:5173", "https://lazyflow-ai.vercel.app"]
-        origins = []
-        for origin in self.CORS_ORIGINS.split(","):
-            cleaned = origin.strip().rstrip("/")
-            if cleaned and cleaned not in origins:
-                origins.append(cleaned)
+        # Always permit the verified production Vercel frontend domains and local dev servers
+        default_origins = [
+            "https://lazy-flow-ai.vercel.app",
+            "https://lazyflow-ai.vercel.app",
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:3000",
+        ]
+        origins = list(default_origins)
+
+        if self.CORS_ORIGINS:
+            raw = self.CORS_ORIGINS.strip()
+            # Support JSON array format e.g. ["https://..."] as well as comma-separated
+            items: List[str] = []
+            if raw.startswith("[") and raw.endswith("]"):
+                try:
+                    import json
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        items = [str(x) for x in parsed]
+                except Exception:
+                    items = raw.strip("[]").split(",")
+            else:
+                items = raw.split(",")
+
+            for item in items:
+                cleaned = item.strip().strip("'\"").rstrip("/")
+                if cleaned and cleaned not in origins:
+                    origins.append(cleaned)
         return origins
 
 settings = Settings()

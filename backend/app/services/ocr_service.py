@@ -58,6 +58,10 @@ class OCRService:
             Path("C:/Program Files (x86)/Tesseract-OCR/tesseract.exe"),
             Path("/usr/bin/tesseract"),
             Path("/usr/local/bin/tesseract"),
+            Path(Path.home()) / "vendor" / "usr" / "bin" / "tesseract",
+            Path("/opt/render/project/src/vendor/usr/bin/tesseract"),
+            Path("/opt/render/project/src/backend/vendor/usr/bin/tesseract"),
+            Path(os.getcwd()) / "vendor" / "usr" / "bin" / "tesseract",
         ])
 
         for path in candidates:

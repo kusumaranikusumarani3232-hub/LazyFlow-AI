@@ -21,13 +21,26 @@ export const StatusBanner: React.FC<StatusBannerProps> = ({
 }) => {
   const isMisconfigured = Boolean(health && !health.backboard_configured);
   const hasConnectionError = connectionState === 'error' && Boolean(connectionError);
+  const isWakingUp = connectionState === 'connecting' && Boolean(connectionError);
 
-  if (!isMisconfigured && !hasConnectionError && !errorMessage) {
+  if (!isMisconfigured && !hasConnectionError && !isWakingUp && !errorMessage) {
     return null;
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-3 px-4">
+      {/* Backend Waking Up Notice */}
+      {isWakingUp && (
+        <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-600/40 text-blue-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-pulse">
+          <div className="flex items-center gap-2.5">
+            <RefreshCw className="w-4 h-4 text-blue-400 animate-spin shrink-0" />
+            <p className="text-blue-200 font-medium leading-relaxed">
+              {connectionError}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Backend Connection Error Alert */}
       {hasConnectionError && (
         <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-600/40 text-amber-200 text-xs flex items-start justify-between gap-3 shadow-lg">

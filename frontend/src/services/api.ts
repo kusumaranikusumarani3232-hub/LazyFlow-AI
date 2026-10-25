@@ -7,8 +7,12 @@ import type {
 } from '../types';
 
 // In production on Vercel, VITE_API_URL points to Render backend (e.g. https://lazyflow-ai.onrender.com).
+// Defaults to https://lazyflow-ai.onrender.com in production if VITE_API_URL was not set during build.
 // Locally with Vite dev proxy, empty string uses relative /api which Vite proxies to http://127.0.0.1:8000.
-const RAW_API_BASE = (import.meta.env.VITE_API_URL || '').trim();
+const RAW_API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://lazyflow-ai.onrender.com' : '')
+).trim();
 export const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
 
 export function getApiBaseUrl(): string {
