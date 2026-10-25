@@ -62,21 +62,34 @@ async def root():
         "model_badge": "Open-Weight AI · Powered by Backboard"
     }
 
+from app.services.ocr_service import ocr_service
+from app.services.vision_service import vision_service
+
 @app.get("/api/health", response_model=HealthResponse, tags=["Diagnostics"])
 async def health_check():
     configured = ai_organizer.check_configuration()
+    engine_info = ocr_service.get_engine_info()
+    vis_info = vision_service.get_engine_info()
     return HealthResponse(
         status="healthy" if configured else "misconfigured",
         app_name="LazyFlow AI",
         backboard_configured=configured,
         model=settings.BACKBOARD_DEFAULT_MODEL,
         provider=settings.BACKBOARD_DEFAULT_PROVIDER,
-        version="1.0.0"
+        version="1.0.0",
+        ocr_available=engine_info["available"],
+        ocr_engine=f"Tesseract {engine_info.get('version', '')}".strip(),
+        vision_available=vis_info["available"],
+        vision_engine=f"{vis_info.get('model_family', 'MobileNetV3-Small')}".strip()
     )
+
+from app.services.content_extractor import content_extractor
 
 @app.get("/api/model-status", tags=["Diagnostics"])
 async def model_status():
     configured = ai_organizer.check_configuration()
+    engine_info = ocr_service.get_engine_info()
+    vis_info = vision_service.get_engine_info()
     return {
         "configured": configured,
         "provider": settings.BACKBOARD_DEFAULT_PROVIDER,
@@ -84,7 +97,14 @@ async def model_status():
         "model_family": "Llama 3.1 (Open-Weight)",
         "open_weight": True,
         "hosted_via": "Backboard API",
-        "privacy_policy": "Zero file content transmission; only filenames, extensions, and user descriptions are analyzed.",
+        "privacy_policy": "Zero file content transmission without user consent. With explicit consent, only minimal locally-extracted text snippets (up to 1KB) are analyzed. Ephemeral session storage.",
+        "content_analysis_supported": True,
+        "ocr_supported": True,
+        "ocr_available": engine_info["available"],
+        "ocr_engine": engine_info,
+        "vision_supported": True,
+        "vision_available": vis_info["available"],
+        "vision_engine": vis_info,
         "max_batch_files": settings.MAX_BATCH_FILES,
         "max_file_size_mb": settings.MAX_FILE_SIZE_MB
     }
@@ -111,6 +131,12 @@ async def list_sample_files():
     """
     samples = get_standard_sample_files()
     hints = {
+        "document.pdf": "Generic name, contains full resume",
+        "file.pdf": "Generic name, contains hosting invoice",
+        "notes.docx": "Generic name, contains CS50 study notes",
+        "ambiguous_data.bin": "Minimal binary data, ambiguous content",
+        "apollo_mission_proposal.docx": "Apollo Project mission proposal",
+        "apollo_budget.csv": "Apollo Project budget sheet",
         "Invoice_Oct_final_v2_FINAL.pdf": "October cloud hosting bill",
         "IMG_20231012_WA0004.jpg": "Team meetup photo",
         "draft_cs50_week3_notes.docx": "CS50 algorithms lecture notes",
@@ -126,6 +152,7 @@ async def list_sample_files():
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "csv": "text/csv",
+        "bin": "application/octet-stream",
     }
 
     result = []
@@ -158,6 +185,7 @@ async def get_sample_file(filename: str):
         "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         "csv": "text/csv",
+        "bin": "application/octet-stream",
     }
     media_type = mimes.get(ext, "application/octet-stream")
 
@@ -171,13 +199,16 @@ async def get_sample_file(filename: str):
 async def upload_and_organize(
     files: List[UploadFile] = File(...),
     custom_categories: Optional[str] = Form(None),
-    descriptions: Optional[str] = Form(None)
+    user_folder: Optional[str] = Form(None),
+    descriptions: Optional[str] = Form(None),
+    consent_content_analysis: bool = Form(True)
 ):
     """
     Primary workflow endpoint:
-    1. Temporarily stores uploaded files under a session directory.
-    2. Sends ONLY filenames, extensions, sizes, and user descriptions to Backboard AI.
-    3. Returns AI-generated organization structure (folders, clean filenames, reasons).
+    1. Temporarily stores uploaded files under an ephemeral session directory.
+    2. If consent_content_analysis is True, extracts minimal text snippets (up to 1KB).
+    3. Sends filenames, extensions, hints, and minimal snippets to Backboard AI.
+    4. Returns AI-generated organization structure (folders, clean filenames, reasons).
     """
     if not files:
         raise HTTPException(status_code=400, detail="No files were uploaded.")
@@ -195,6 +226,8 @@ async def upload_and_organize(
             parsed_custom = [c.strip() for c in custom_categories.split(",") if c.strip()]
         except Exception:
             parsed_custom = None
+    elif user_folder:
+        parsed_custom = [user_folder.strip()]
 
     # Parse descriptions if provided as JSON string
     desc_map = {}
@@ -205,21 +238,40 @@ async def upload_and_organize(
             desc_map = {}
 
     session_id = f"sess_{uuid.uuid4().hex[:12]}"
+    logger.info(
+        f"[Diagnostic:Upload] Received {len(files)} uploaded file(s). "
+        f"Session: '{session_id}'. Consent for content analysis: {consent_content_analysis}."
+    )
     
     # Save files to session directory
     saved_files = await zip_service.save_uploaded_files(session_id, files)
 
-    # Convert to FileMetadata
-    metadata_list = [
-        FileMetadata(
-            id=item["id"],
-            filename=item["filename"],
-            size=item["size"],
-            mime_type=item["mime_type"],
-            description=desc_map.get(item["filename"], "")
+    # Extract content snippets if user consented
+    metadata_list: List[FileMetadata] = []
+    for item in saved_files:
+        content_snippet: Optional[str] = None
+        extracted_meta: Optional[dict] = None
+
+        if consent_content_analysis:
+            ext_res = content_extractor.extract_file_content(
+                file_path=item["stored_path"],
+                filename=item["filename"],
+                mime_type=item["mime_type"]
+            )
+            content_snippet = ext_res.get("content_snippet")
+            extracted_meta = ext_res.get("extracted_metadata")
+
+        metadata_list.append(
+            FileMetadata(
+                id=item["id"],
+                filename=item["filename"],
+                size=item["size"],
+                mime_type=item["mime_type"],
+                description=desc_map.get(item["filename"], ""),
+                content_snippet=content_snippet,
+                extracted_metadata=extracted_meta
+            )
         )
-        for item in saved_files
-    ]
 
     # Run Backboard AI categorization
     response = await ai_organizer.organize_files(

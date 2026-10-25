@@ -45,6 +45,7 @@ export const App: React.FC = () => {
   // Upload state
   const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [consentContentAnalysis, setConsentContentAnalysis] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   // Review & Download state
@@ -146,11 +147,50 @@ export const App: React.FC = () => {
       console.warn('Could not fetch server samples, generating genuine client binaries:', err);
       // Fallback: generate genuine binary files (valid PDF, PNG, JPEG, CSV)
       const samples = [
-        { name: 'Invoice_Oct_final_v2_FINAL.pdf', type: 'application/pdf', hint: 'October cloud hosting bill', blob: createClientPdfBlob('October Cloud Hosting Invoice') },
+        {
+          name: 'document.pdf',
+          type: 'application/pdf',
+          hint: 'Generic name, contains full resume',
+          blob: createClientPdfBlob('Alex Morgan - Resume', [
+            'Summary: Senior Software Engineer with 6+ years experience.',
+            'Experience: Tech Lead building scalable backend microservices.',
+            'Education: B.S. in Computer Science - Honors.',
+            'Skills: Python, TypeScript, React, Docker, FastAPI.'
+          ])
+        },
+        {
+          name: 'file.pdf',
+          type: 'application/pdf',
+          hint: 'Generic name, contains hosting invoice',
+          blob: createClientPdfBlob('INVOICE #INV-2024-889', [
+            'Vendor: Cloud Infrastructure & Hosting Services',
+            'Bill To: Acme Technologies Inc.',
+            'Amount Due: $450.00 USD - Due Date: Nov 15, 2024',
+            'Services: Dedicated GPU compute and managed Redis cluster'
+          ])
+        },
+        {
+          name: 'notes.docx',
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          hint: 'Generic name, CS50 study notes',
+          blob: createClientPdfBlob('CS50 Study Notes - Algorithms and Data Structures', [
+            'Lecture on binary search trees, time complexity O(log n), and asymptotic runtime analysis.'
+          ])
+        },
+        {
+          name: 'apollo_budget.csv',
+          type: 'text/csv',
+          hint: 'Project Apollo budget export',
+          blob: createClientCsvBlob()
+        },
+        {
+          name: 'ambiguous_data.bin',
+          type: 'application/octet-stream',
+          hint: 'Minimal binary bytes (ambiguous)',
+          blob: new Blob([new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7])], { type: 'application/octet-stream' })
+        },
         { name: 'IMG_20231012_WA0004.jpg', type: 'image/jpeg', hint: 'Team meetup photo', blob: new Blob([VALID_JPEG_BYTES], { type: 'image/jpeg' }) },
         { name: 'Screenshot 2024-03-01 at 4.22.19 PM.png', type: 'image/png', hint: 'Checkout button UI bug', blob: new Blob([VALID_PNG_BYTES], { type: 'image/png' }) },
-        { name: 'w2_tax_return_2023.pdf', type: 'application/pdf', hint: 'Annual tax document', blob: createClientPdfBlob('Form W-2 Wage & Tax Statement 2023') },
-        { name: 'dump_users_export_v1_backup.csv', type: 'text/csv', hint: 'Database user export', blob: createClientCsvBlob() },
       ];
 
       const fallbackFiles: UploadFileItem[] = samples.map((s, idx) => {
@@ -182,7 +222,12 @@ export const App: React.FC = () => {
         }
       });
 
-      const response = await uploadAndOrganize(rawFiles, customCategories, descriptionsMap);
+      const response = await uploadAndOrganize(
+        rawFiles,
+        customCategories,
+        descriptionsMap,
+        consentContentAnalysis
+      );
       setOrganizeResult(response);
       setItems(response.items);
       setCategoriesSummary(response.categories_summary);
@@ -267,11 +312,12 @@ export const App: React.FC = () => {
   // Gather all unique folders
   const allAvailableFolders = Array.from(
     new Set([
+      'Career',
+      'Finance',
+      'Study',
+      'Work',
       'Documents',
       'Images',
-      'Work',
-      'Study',
-      'Finance',
       'Code',
       'Other',
       ...customCategories,
@@ -317,7 +363,7 @@ export const App: React.FC = () => {
                   Upload & Classify Workspace
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  Add your messy files. Optional hints help AI choose even sharper filenames.
+                  Add your messy files. Content-aware AI detects resumes, invoices, and notes automatically.
                 </p>
               </div>
 
@@ -333,6 +379,8 @@ export const App: React.FC = () => {
                 onStartOrganizing={handleStartOrganizing}
                 isLoading={isLoading}
                 onLoadSamples={handleLoadSamples}
+                consentContentAnalysis={consentContentAnalysis}
+                onToggleConsent={setConsentContentAnalysis}
               />
             </div>
           ) : (

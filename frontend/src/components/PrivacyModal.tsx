@@ -33,13 +33,25 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({ isOpen, onClose }) =
 
         {/* Content */}
         <div className="space-y-5 text-xs text-slate-300 leading-relaxed">
-          {/* Rule 1: No file contents sent */}
+          {/* Rule 1: Content-aware with user consent & bounded extraction */}
           <div className="flex gap-3.5 p-3.5 rounded-xl bg-charcoal-950/60 border border-forest-900/40">
             <EyeOff className="w-5 h-5 text-forest-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="font-semibold text-white text-sm mb-1">Zero File Content Transmission</h4>
+              <h4 className="font-semibold text-white text-sm mb-1">Content-Aware Analysis with User Consent</h4>
               <p className="text-slate-400">
-                LazyFlow AI <strong>never transmits file contents</strong> to any AI model or third-party service. Only the metadata—such as original filename, file extension, byte size, and optional user hints—is sent for classification and renaming.
+                To distinguish actual file purpose (e.g. recognizing that a <code className="text-forest-300">document.pdf</code> is a resume, or a <code className="text-forest-300">file.pdf</code> is an invoice), LazyFlow AI locally extracts minimal text snippets (up to 1KB: document headings and sample rows). 
+                <strong> Full binary file contents are never transmitted.</strong> You can toggle Content-Aware Analysis off at any time for strict metadata-only mode.
+              </p>
+            </div>
+          </div>
+
+          {/* Rule 1.5: Zero logging of file contents */}
+          <div className="flex gap-3.5 p-3.5 rounded-xl bg-charcoal-950/60 border border-forest-900/40">
+            <Lock className="w-5 h-5 text-forest-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-white text-sm mb-1">Zero Server Logging of File Contents</h4>
+              <p className="text-slate-400">
+                Extracted text snippets are strictly ephemeral in backend memory during inference. LazyFlow AI <strong>never logs extracted text or user document contents</strong> to server disk, stdout, or external telemetry.
               </p>
             </div>
           </div>

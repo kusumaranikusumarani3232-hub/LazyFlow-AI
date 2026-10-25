@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,6 +23,18 @@ class Settings(BaseSettings):
     
     # Storage directory for temporary uploads during session
     TEMP_DIR: str = str(BASE_DIR / "temp_storage")
+
+    # OCR configuration
+    TESSERACT_CMD: Optional[str] = None
+    OCR_ENABLED: bool = True
+    OCR_MAX_PAGES: int = 2
+    OCR_MAX_IMAGE_DIMENSION: int = 2000
+    OCR_TIMEOUT_SECONDS: int = 10
+
+    # Vision Classification configuration
+    VISION_ENABLED: bool = True
+    VISION_CONFIDENCE_THRESHOLD: float = 0.18
+    VISION_MAX_INPUT_DIMENSION: int = 512
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

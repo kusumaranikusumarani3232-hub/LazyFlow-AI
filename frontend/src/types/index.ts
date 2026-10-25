@@ -7,6 +7,8 @@ export interface FileOrganizedItem {
   reason: string;
   excluded: boolean;
   user_modified: boolean;
+  is_ambiguous?: boolean;
+  confidence?: string;
 }
 
 export interface OrganizeResponse {
@@ -17,6 +19,7 @@ export interface OrganizeResponse {
   items: FileOrganizedItem[];
   categories_summary: Record<string, number>;
   message: string;
+  content_analysis_used?: boolean;
 }
 
 export interface ModelStatus {
@@ -27,6 +30,7 @@ export interface ModelStatus {
   open_weight: boolean;
   hosted_via: string;
   privacy_policy: string;
+  content_analysis_supported?: boolean;
   max_batch_files: number;
   max_file_size_mb: number;
 }
@@ -52,5 +56,5 @@ export interface FileMetadata {
   size: number;
   mime_type?: string;
   description?: string;
+  content_snippet?: string;
 }
-

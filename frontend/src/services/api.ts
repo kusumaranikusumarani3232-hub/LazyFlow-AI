@@ -140,7 +140,8 @@ export async function organizeMetadata(
 export async function uploadAndOrganize(
   files: File[],
   customCategories?: string[],
-  descriptions?: Record<string, string>
+  descriptions?: Record<string, string>,
+  consentContentAnalysis: boolean = true
 ): Promise<OrganizeResponse> {
   const formData = new FormData();
 
@@ -155,6 +156,8 @@ export async function uploadAndOrganize(
   if (descriptions && Object.keys(descriptions).length > 0) {
     formData.append('descriptions', JSON.stringify(descriptions));
   }
+
+  formData.append('consent_content_analysis', consentContentAnalysis ? 'true' : 'false');
 
   const res = await safeFetch('/api/upload-and-organize', {
     method: 'POST',
@@ -179,12 +182,36 @@ export async function downloadOrganizedZip(
     }),
   });
 
-  let filename = 'lazyflow_organized.zip';
-  const disposition = res.headers.get('Content-Disposition');
-  if (disposition && disposition.includes('filename=')) {
-    const match = disposition.match(/filename="?([^"]+)"?/);
-    if (match && match[1]) {
-      filename = match[1];
+  let filename = 'Organized_Files.zip';
+  const disposition = res.headers.get('Content-Disposition') || res.headers.get('content-disposition');
+  if (disposition) {
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;\s]+)/i);
+    if (utf8Match && utf8Match[1]) {
+      try {
+        filename = decodeURIComponent(utf8Match[1]);
+      } catch {
+        filename = utf8Match[1];
+      }
+    } else {
+      const standardMatch = disposition.match(/filename=(?:"([^"]+)"|([^;\s]+))/i);
+      if (standardMatch) {
+        filename = standardMatch[1] || standardMatch[2] || filename;
+      }
+    }
+  } else {
+    // Dynamic fallback if header is stripped
+    const active = items.filter((i) => !i.excluded);
+    const folders = Array.from(new Set(active.map((i) => (i.folder || '').trim()).filter(Boolean)));
+    if (folders.length === 1) {
+      if (folders[0].toLowerCase() === 'images') {
+        filename = 'Photos_and_Images.zip';
+      } else {
+        filename = `${folders[0].replace(/[\s-]+/g, '_')}_Files.zip`;
+      }
+    } else if (folders.length === 2) {
+      filename = `${folders[0]}_and_${folders[1]}_Files.zip`;
+    } else if (folders.length > 2) {
+      filename = 'Organized_Mixed_Files.zip';
     }
   }
 

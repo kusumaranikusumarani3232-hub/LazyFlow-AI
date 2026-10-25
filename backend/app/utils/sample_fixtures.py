@@ -46,10 +46,16 @@ def create_valid_jpeg() -> bytes:
         0x00, 0x7F, 0x00, 0xFF, 0xD9
     ])
 
-def create_valid_pdf(title: str = "LazyFlow Document") -> bytes:
+def create_valid_pdf(title: str = "LazyFlow Document", extra_lines: list[str] | None = None) -> bytes:
     """Generate a valid, fully conformant, openable PDF-1.4 document."""
     escaped_title = title.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-    stream_content = f"BT /F1 14 Tf 50 720 Td ({escaped_title}) Tj ET\n"
+    stream_ops = [f"BT /F1 12 Tf 50 720 Td ({escaped_title}) Tj"]
+    if extra_lines:
+        for l in extra_lines:
+            esc = l.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+            stream_ops.append(f"0 -18 Td ({esc}) Tj")
+    stream_ops.append("ET\n")
+    stream_content = "\n".join(stream_ops)
     stream_len = len(stream_content.encode("ascii", errors="replace"))
 
     lines = [
@@ -200,6 +206,39 @@ def create_valid_csv() -> bytes:
 def get_standard_sample_files() -> Dict[str, bytes]:
     """Returns a dictionary of filename -> valid file bytes for realistic sample dataset."""
     return {
+        "document.pdf": create_valid_pdf(
+            "Alex Morgan - Curriculum Vitae",
+            [
+                "Summary: Senior Full-Stack Software Engineer with 6+ years experience.",
+                "Experience: Tech Lead at Acme Corp building scalable microservices.",
+                "Education: B.S. in Computer Science - Honors.",
+                "Skills: Python, TypeScript, React, PostgreSQL, Docker."
+            ]
+        ),
+        "file.pdf": create_valid_pdf(
+            "INVOICE #INV-2024-889",
+            [
+                "Vendor: Cloud Infrastructure & Hosting Services",
+                "Bill To: Acme Technologies Inc.",
+                "Amount Due: $450.00 USD - Due Date: Nov 15, 2024",
+                "Services: Dedicated GPU compute and managed Redis cluster"
+            ]
+        ),
+        "notes.docx": create_valid_docx(
+            "CS50 Algorithms & Data Structures Study Notes",
+            "Comprehensive lecture notes on binary search trees, time complexity O(log n), and asymptotic runtime analysis."
+        ),
+        "ambiguous_data.bin": b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
+        "apollo_mission_proposal.docx": create_valid_docx(
+            "Project Apollo - Mission Proposal and Architecture",
+            "Detailed technical proposal, system architecture diagrams, and milestone schedule for Project Apollo."
+        ),
+        "apollo_budget.csv": (
+            "Category,Phase,Item,EstimatedCost,Currency\n"
+            "Hardware,Phase 1,Server Cluster Rack,12000,USD\n"
+            "Software,Phase 1,Enterprise Licenses,4500,USD\n"
+            "Testing,Phase 2,Security Audit,8000,USD\n"
+        ).encode("utf-8"),
         "Invoice_Oct_final_v2_FINAL.pdf": create_valid_pdf("Monthly Cloud Hosting Invoice - October 2023"),
         "IMG_20231012_WA0004.jpg": create_valid_jpeg(),
         "draft_cs50_week3_notes.docx": create_valid_docx("CS50 Lecture 3: Algorithms and Binary Search", "Overview of search and sorting complexity."),
@@ -208,3 +247,61 @@ def get_standard_sample_files() -> Dict[str, bytes]:
         "q4_roadmap_presentation_team.pptx": create_valid_pptx("Q4 Product Roadmap & Goals"),
         "dump_users_export_v1_backup.csv": create_valid_csv(),
     }
+
+
+def create_image_with_text(text: str, width: int = 900, height: int = 400, format: str = "PNG") -> bytes:
+    """Generate a valid image with rendered visible text on a white canvas."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    y = 40
+    for line in text.split("\n"):
+        line_clean = line.strip()
+        if line_clean:
+            draw.text((40, y), line_clean, fill=(0, 0, 0))
+            y += 35
+    buf = io.BytesIO()
+    img.save(buf, format=format)
+    return buf.getvalue()
+
+
+def create_scanned_pdf(text: str, width: int = 900, height: int = 600) -> bytes:
+    """Generate a valid PDF containing ONLY an image of the text without any extractable text stream."""
+    import fitz
+    img_bytes = create_image_with_text(text, width=width, height=height, format="PNG")
+    doc = fitz.open()
+    page = doc.new_page(width=float(width), height=float(height))
+    rect = fitz.Rect(0, 0, float(width), float(height))
+    page.insert_image(rect, stream=img_bytes)
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    return pdf_bytes
+
+
+def create_tshirt_image(format: str = "JPEG") -> bytes:
+    """Generate a valid image depicting a recognizable T-shirt shape."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (320, 320), color=(240, 240, 240))
+    draw = ImageDraw.Draw(img)
+    # T-shirt silhouette in navy blue with collar
+    shirt_poly = [
+        (110, 60), (140, 80), (180, 80), (210, 60),
+        (260, 95), (235, 140), (205, 125), (205, 260),
+        (115, 260), (115, 125), (85, 140), (60, 95)
+    ]
+    draw.polygon(shirt_poly, fill=(20, 40, 160), outline=(10, 20, 100))
+    draw.arc([130, 50, 190, 85], start=0, end=180, fill=(240, 240, 240), width=3)
+    buf = io.BytesIO()
+    img.save(buf, format=format)
+    return buf.getvalue()
+
+
+def create_abstract_noise_image(format: str = "JPEG") -> bytes:
+    """Generate an abstract gradient pattern with no recognizable object."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (320, 320), color=(140, 140, 140))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([80, 80, 240, 240], fill=(155, 145, 150))
+    buf = io.BytesIO()
+    img.save(buf, format=format)
+    return buf.getvalue()

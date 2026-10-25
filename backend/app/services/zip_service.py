@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 import shutil
 import time
 import zipfile
@@ -231,8 +232,114 @@ class ZipService:
                 zf.write(source_file, arcname=arcname)
 
         zip_buffer.seek(0)
-        zip_filename = f"lazyflow_organized_{int(time.time())}.zip"
+        zip_filename = self.determine_zip_filename(active_items)
         return zip_buffer, zip_filename
+
+    def determine_zip_filename(self, items: List[FileOrganizedItem]) -> str:
+        """
+        Generate the ZIP filename dynamically from the actual files selected for export
+        and their final destination folders:
+        - Career files only -> Career_Files.zip
+        - Study files only -> Study_Files.zip
+        - Finance files only -> Finance_Files.zip
+        - Images only -> Photos_and_Images.zip
+        - Career and Study files -> Career_and_Study_Files.zip
+        - Several categories -> combine the main category names when practical (e.g. Career_and_Finance_Files.zip);
+          if there are too many categories, use Organized_Mixed_Files.zip.
+        Exclude unchecked/excluded files from the ZIP and from filename generation.
+        Sanitizes the filename to prevent invalid filesystem characters.
+        """
+        active_items = [i for i in items if not i.excluded]
+        if not active_items:
+            return "Organized_Mixed_Files.zip"
+
+        folder_counts: Dict[str, int] = {}
+        for item in active_items:
+            raw_folder = (item.folder or "").strip()
+            if raw_folder:
+                folder_counts[raw_folder] = folder_counts.get(raw_folder, 0) + 1
+
+        if not folder_counts:
+            return "Organized_Mixed_Files.zip"
+
+        def _clean_category(name: str) -> str:
+            clean = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '_', name).strip()
+            clean = re.sub(r'[\s\-]+', '_', clean).strip('_')
+            clean = re.sub(r'_files$', '', clean, flags=re.IGNORECASE)
+            return clean
+
+        folders_list = list(folder_counts.keys())
+
+        # Canonical category order for consistent naming
+        canonical_order = {
+            "career": 1,
+            "study": 2,
+            "finance": 3,
+            "work": 4,
+            "images": 5,
+            "code": 6,
+            "documents": 7,
+            "other": 99
+        }
+
+        # 1. Single category
+        if len(folders_list) == 1:
+            raw_folder = folders_list[0]
+            clean_name = _clean_category(raw_folder)
+            if not clean_name or clean_name.lower() in ("other", "miscellaneous", "default", "files"):
+                return "Organized_Files.zip"
+            if clean_name.lower() in ("images", "photos", "pictures"):
+                return "Photos_and_Images.zip"
+            return f"{clean_name}_Files.zip"
+
+        # Sort categories by count (descending), then by canonical priority
+        sorted_folders = sorted(
+            folders_list,
+            key=lambda f: (-folder_counts[f], canonical_order.get(f.lower(), 50), f.lower())
+        )
+
+        # 2. Exactly two categories
+        if len(sorted_folders) == 2:
+            # Sort the 2 categories by canonical order if counts are equal
+            if folder_counts[sorted_folders[0]] == folder_counts[sorted_folders[1]]:
+                sorted_folders = sorted(
+                    sorted_folders,
+                    key=lambda f: (canonical_order.get(f.lower(), 50), f.lower())
+                )
+
+            cat1 = _clean_category(sorted_folders[0])
+            cat2 = _clean_category(sorted_folders[1])
+
+            # If both are generic/other
+            if cat1.lower() in ("other", "files") and cat2.lower() in ("other", "files"):
+                return "Organized_Mixed_Files.zip"
+            if cat1.lower() in ("other", "files"):
+                return "Photos_and_Images.zip" if cat2.lower() in ("images", "photos") else f"{cat2}_Files.zip"
+            if cat2.lower() in ("other", "files"):
+                return "Photos_and_Images.zip" if cat1.lower() in ("images", "photos") else f"{cat1}_Files.zip"
+
+            # Combine: e.g. Career_and_Study_Files.zip, Career_and_Finance_Files.zip
+            return f"{cat1}_and_{cat2}_Files.zip"
+
+        # 3. Three categories - combine if practical, otherwise Organized_Mixed_Files.zip
+        if len(sorted_folders) == 3:
+            # If 3rd category is small/insignificant Other, combine top 2
+            top2_count = folder_counts[sorted_folders[0]] + folder_counts[sorted_folders[1]]
+            if sorted_folders[2].lower() in ("other", "documents") and top2_count >= 2:
+                cat1 = _clean_category(sorted_folders[0])
+                cat2 = _clean_category(sorted_folders[1])
+                return f"{cat1}_and_{cat2}_Files.zip"
+
+            cat1 = _clean_category(sorted_folders[0])
+            cat2 = _clean_category(sorted_folders[1])
+            cat3 = _clean_category(sorted_folders[2])
+            combined = f"{cat1}_{cat2}_and_{cat3}_Files.zip"
+            if len(combined) <= 45 and not any(c.lower() in ("other", "files") for c in (cat1, cat2, cat3)):
+                return combined
+            return "Organized_Mixed_Files.zip"
+
+        # 4. Too many categories (> 3 categories)
+        return "Organized_Mixed_Files.zip"
 
     def cleanup_session(self, session_id: str):
         try:

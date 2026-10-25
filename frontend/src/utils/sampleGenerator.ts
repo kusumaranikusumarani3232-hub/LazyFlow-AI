@@ -32,7 +32,14 @@ export const VALID_JPEG_BYTES = new Uint8Array([
 ]);
 
 // Valid minimal PDF-1.4 file
-export function createClientPdfBlob(title: string): Blob {
+export function createClientPdfBlob(title: string, extraLines: string[] = []): Blob {
+  const ops = [`BT /F1 12 Tf 50 720 Td (${title}) Tj`];
+  extraLines.forEach((line) => {
+    ops.push(`0 -18 Td (${line}) Tj`);
+  });
+  ops.push('ET\n');
+  const streamContent = ops.join('\n');
+
   const content = `%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
@@ -44,9 +51,9 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << >> >>
 endobj
 4 0 obj
-<< /Length ${title.length + 32} >>
+<< /Length ${streamContent.length} >>
 stream
-BT /F1 12 Tf 50 720 Td (${title}) Tj ET
+${streamContent.trim()}
 endstream
 endobj
 xref

@@ -15,6 +15,8 @@ interface DropzoneProps {
   onStartOrganizing: () => void;
   isLoading: boolean;
   onLoadSamples: () => void;
+  consentContentAnalysis: boolean;
+  onToggleConsent: (val: boolean) => void;
 }
 
 export const Dropzone: React.FC<DropzoneProps> = ({
@@ -29,6 +31,8 @@ export const Dropzone: React.FC<DropzoneProps> = ({
   onStartOrganizing,
   isLoading,
   onLoadSamples,
+  consentContentAnalysis,
+  onToggleConsent,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [newCatInput, setNewCatInput] = useState('');
@@ -236,11 +240,56 @@ export const Dropzone: React.FC<DropzoneProps> = ({
             </div>
           </div>
 
+          {/* Content-Aware Analysis Consent & Toggle */}
+          <div className="pt-3 border-t border-slate-800 space-y-2">
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-charcoal-900/90 border border-slate-800 gap-4">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-4 h-4 text-forest-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-white">Content-Aware File Organization</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${
+                      consentContentAnalysis
+                        ? 'bg-forest-950 text-forest-300 border-forest-700/50'
+                        : 'bg-slate-900 text-slate-400 border-slate-700'
+                    }`}>
+                      {consentContentAnalysis ? 'Active · Inspects Text Snippets' : 'Metadata Only Mode'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Extracts readable text snippets from PDFs (resumes, invoices), Word docs, and spreadsheets to infer true file purpose. Full binary files are never sent; zero file content is logged.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onToggleConsent(!consentContentAnalysis)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  consentContentAnalysis ? 'bg-forest-600' : 'bg-charcoal-800 border-slate-700'
+                }`}
+                role="switch"
+                aria-checked={consentContentAnalysis}
+                title="Toggle Content-Aware File Organization"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    consentContentAnalysis ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           {/* Action Button */}
-          <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-slate-400">
               <CheckCircle2 className="w-4 h-4 text-forest-400 shrink-0" />
-              <span>Zero file content sent. Backboard open-weight AI processes only names & hints.</span>
+              <span>
+                {consentContentAnalysis
+                  ? 'Content-aware mode: Minimal text excerpts analyzed with Backboard AI.'
+                  : 'Metadata-only mode: Only filenames, extensions, and hints analyzed.'}
+              </span>
             </div>
 
             <button

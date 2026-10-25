@@ -203,25 +203,38 @@ export const ReviewTable: React.FC<ReviewTableProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between group">
-                        <span
-                          className={`font-mono truncate ${
-                            item.user_modified
-                              ? 'text-amber-300 font-semibold'
-                              : 'text-forest-400 font-medium'
-                          }`}
-                          title={item.suggested_filename}
-                        >
-                          {item.suggested_filename}
-                        </span>
-                        {!isExcluded && (
-                          <button
-                            onClick={() => startEditing(item)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white transition-opacity ml-2 shrink-0"
-                            title="Edit filename"
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between group">
+                          <span
+                            className={`font-mono truncate ${
+                              item.user_modified
+                                ? 'text-amber-300 font-semibold'
+                                : item.is_ambiguous
+                                ? 'text-amber-200 font-medium'
+                                : 'text-forest-400 font-medium'
+                            }`}
+                            title={item.suggested_filename}
                           >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
+                            {item.suggested_filename}
+                          </span>
+                          {!isExcluded && (
+                            <button
+                              onClick={() => startEditing(item)}
+                              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-white transition-opacity ml-2 shrink-0"
+                              title="Edit filename"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        {item.is_ambiguous && (
+                          <div className="flex items-center gap-1">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-sans bg-amber-950/70 text-amber-300 border border-amber-800/50">
+                              Ambiguous · Kept Original
+                            </span>
+                            <span className="text-[10px] text-slate-500">(Click edit icon to customize)</span>
+                          </div>
                         )}
                       </div>
                     )}
